@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "dgSpecHash": "FHqCQ6ho+Ok=",
+  "success": true,
+  "projectFilePath": "D:\\Kits And Stuff\\Projects\\repos\\Youtube Downloader\\Youtube-Downloader\\YoutubeDownloader\\YoutubeDownloader.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\The Living Tribunal\\.nuget\\packages\\microsoft.web.webview2\\1.0.3650.58\\microsoft.web.webview2.1.0.3650.58.nupkg.sha512"
+  ],
+  "logs": []
+}
