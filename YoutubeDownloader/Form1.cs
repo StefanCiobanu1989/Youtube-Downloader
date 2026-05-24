@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics;
 using System.IO.Compression;
 using System.Runtime.InteropServices;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 
 namespace YoutubeDownloader
@@ -44,69 +45,95 @@ namespace YoutubeDownloader
             InitializeComponent();
         }
 
-        private void Form1_Load(object sender, EventArgs e)
+        private async void Form1_Load(object sender, EventArgs e)
         {
 
-            // Build the full path to the Deno executable inside the "libs" folder of your application's startup directory
-            string denoPath = Path.Combine(Application.StartupPath, "libs", "deno.exe");
-
-            // Check if the Deno executable does NOT exist at that path
-            if (!File.Exists(denoPath))
+            try
             {
-                // If it doesn't exist, extract Deno from the ZIP file located at "libs/deno.zip"
-                UnzipDeno(Path.Combine(Application.StartupPath, "libs", "deno.zip"));
+                // Build the full path to the Deno executable inside the "libs" folder of your application's startup directory
+                string denoPath = Path.Combine(Application.StartupPath, "libs", "deno.exe");
 
-                // Restart the application so that it can use Deno immediately after extraction
-                Application.Restart();
+                // Check if the Deno executable does NOT exist at that path
+                if (!File.Exists(denoPath))
+                {
+                    // If it doesn't exist, extract Deno from the ZIP file located at "libs/deno.zip"
+                    UnzipDeno(Path.Combine(Application.StartupPath, "libs", "deno.zip"));
+
+                    // Restart the application so that it can use Deno immediately after extraction
+                    Application.Restart();
+                }
+
+                // Check if the "libs" folder exists in the application's startup directory.
+                if (!IsPathPresent(Path.Combine(Application.StartupPath, "libs")))
+                {
+                    // Show a message box notifying the user that the path was not found and a new path will be set.
+                    MessageBox.Show("Path not found!" + Environment.NewLine + "Setting new path...");
+
+                    try
+                    {
+                        // Combine the startup path with "libs" to get the full folder path.
+                        string folder = Path.Combine(Application.StartupPath, "libs");
+
+                        // Call a method to add this folder to the system PATH environment variable.
+                        AddToSystemPath(folder);
+
+                        // Notify the user that the folder has been successfully added to the system PATH.
+                        MessageBox.Show("Folder added to system PATH.");
+                    }
+                    // Catch an exception if the program does not have permission to modify the system PATH.
+                    catch (UnauthorizedAccessException)
+                    {
+                        // Notify the user that administrator privileges are required to modify the system PATH.
+                        MessageBox.Show("Run as administrator to modify system PATH.");
+                    }
+                    // Catch any other exceptions that might occur and display the error message.
+                    catch (Exception ex)
+                    {
+                        // Show a message box with the error details.
+                        MessageBox.Show("Error: " + ex.Message);
+                    }
+                }
+                // If the "libs" folder already exists, set the webView21 control to display YouTube.
+                else
+                {
+                    webView21.Source = new Uri("https://www.youtube.com");
+                }
+
+                await DownloadAndUpdateIfNewerAsync(
+                    "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe",
+                    Path.Combine(Application.StartupPath, "libs")
+                );
+
+                // Subscribe to the SourceChanged event of webView21 so that WebView21_SourceChanged
+                // method will be called whenever the source (URL) of the WebView changes.
+                webView21.SourceChanged += WebView21_SourceChanged;
             }
-
-            // Check if the "libs" folder exists in the application's startup directory.
-            if (!IsPathPresent(Path.Combine(Application.StartupPath, "libs")))
+            catch (Exception ex)
             {
-                // Show a message box notifying the user that the path was not found and a new path will be set.
-                MessageBox.Show("Path not found!" + Environment.NewLine + "Setting new path...");
 
-                try
-                {
-                    // Combine the startup path with "libs" to get the full folder path.
-                    string folder = Path.Combine(Application.StartupPath, "libs");
-
-                    // Call a method to add this folder to the system PATH environment variable.
-                    AddToSystemPath(folder);
-
-                    // Notify the user that the folder has been successfully added to the system PATH.
-                    MessageBox.Show("Folder added to system PATH.");
-                }
-                // Catch an exception if the program does not have permission to modify the system PATH.
-                catch (UnauthorizedAccessException)
-                {
-                    // Notify the user that administrator privileges are required to modify the system PATH.
-                    MessageBox.Show("Run as administrator to modify system PATH.");
-                }
-                // Catch any other exceptions that might occur and display the error message.
-                catch (Exception ex)
-                {
-                    // Show a message box with the error details.
-                    MessageBox.Show("Error: " + ex.Message);
-                }
+                MessageBox.Show(ex.Message);
             }
-            // If the "libs" folder already exists, set the webView21 control to display YouTube.
-            else
-            {
-                webView21.Source = new Uri("https://www.youtube.com");
-            }
-
-            // Subscribe to the SourceChanged event of webView21 so that WebView21_SourceChanged
-            // method will be called whenever the source (URL) of the WebView changes.
-            webView21.SourceChanged += WebView21_SourceChanged;
 
         }
 
-        private void WebView21_SourceChanged(object? sender, Microsoft.Web.WebView2.Core.CoreWebView2SourceChangedEventArgs e)
+        private async void WebView21_SourceChanged(object? sender, Microsoft.Web.WebView2.Core.CoreWebView2SourceChangedEventArgs e)
         {
             // Check if the WebView currently has a valid URL loaded.
             if (webView21.Source != null)
             {
+                // If the URL is not a YouTube video page, hide the download button (button1).
+                // Remove existing injected button if present
+                await webView21.CoreWebView2.ExecuteScriptAsync(@"
+                    (function () {
+                        const btn = document.getElementById('downloadBTN');
+                        if (btn) {
+                            btn.remove();
+                        }
+                    })();
+                ");
+
+                contextMenuStrip1.Close();
+
                 // Check if the URL contains "watch?v=", which indicates a YouTube video page.
                 if (webView21.Source.ToString().Contains("watch?v="))
                 {
@@ -117,28 +144,24 @@ namespace YoutubeDownloader
                     // appending the current URL for reference.
                     this.Text = "Youtube Downloader" + " -> " + webView21.Source.ToString();
                 }
-                else
-                {
-                    // If the URL is not a YouTube video page, hide the download button (button1).
-                    button1.Visible = false;
-                }
+
             }
 
         }
 
-        private void button1_Click(object sender, EventArgs e)
-        {
-            // Check if the context menu is currently not visible.
-            if (!contextMenuStrip1.Visible)
-                // If it is not visible, show the context menu right below button1.
-                // The coordinates (0, button1.Height) position it at the left edge of the button,
-                // just below the bottom of the button.
-                contextMenuStrip1.Show(button1, 0, button1.Height);
-            else
-                // If the context menu is already visible, close (hide) it.
-                contextMenuStrip1.Close();
+        //private void button1_Click(object sender, EventArgs e)
+        //{
+        //    // Check if the context menu is currently not visible.
+        //    if (!contextMenuStrip1.Visible)
+        //        // If it is not visible, show the context menu right below button1.
+        //        // The coordinates (0, button1.Height) position it at the left edge of the button,
+        //        // just below the bottom of the button.
+        //        contextMenuStrip1.Show(button1, 0, button1.Height);
+        //    else
+        //        // If the context menu is already visible, close (hide) it.
+        //        contextMenuStrip1.Close();
 
-        }
+        //}
 
         private void Form1_ResizeEnd(object sender, EventArgs e)
         {
@@ -160,8 +183,6 @@ namespace YoutubeDownloader
             }
 
         }
-
-
 
 
 
@@ -240,7 +261,7 @@ namespace YoutubeDownloader
 
         }
 
-        private void PopulateYtDlpMenu()
+        private async void PopulateYtDlpMenu()
         {
             // If the WebView2 has no URL loaded, exit the method early.
             if (webView21.Source == null) return;
@@ -316,8 +337,118 @@ namespace YoutubeDownloader
             // Add the "Download Audio" menu to the context menu strip.
             contextMenuStrip1.Items.Add(downloadAudio);
 
+
+            var closeMenu = new ToolStripMenuItem("Close Menu");
+            closeMenu.ForeColor = Color.WhiteSmoke;
+
+            closeMenu.Click += (s, e) =>
+            {
+                contextMenuStrip1.Close();
+            };
+
+            contextMenuStrip1.Items.Add(closeMenu);
+
             // Make the main download button visible now that the menu is ready.
-            button1.Visible = true;
+            string script = @"
+            (function () {
+
+                const container = document.getElementById('player-container');
+                if (!container) return;
+
+                // prevent duplicates
+                if (document.getElementById('downloadBTN')) return;
+
+                // button
+                const btn = document.createElement('div');
+                btn.id = 'downloadBTN';
+
+                btn.style.cssText = `
+                    position: absolute;
+                    right: 10px;
+                    top: 10px;
+                    z-index: 99999;
+
+                    width: 100px;
+                    padding: 14px 18px;
+
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 10px;
+
+                    background: linear-gradient(135deg, #4f46e5, #7c3aed);
+                    color: white;
+
+                    border-radius: 14px;
+
+                    font-size: 15px;
+                    font-weight: 600;
+                    font-family: Arial, sans-serif;
+
+                    cursor: pointer;
+                    user-select: none;
+
+                    box-shadow:
+                        0 10px 25px rgba(124, 58, 237, 0.35),
+                        inset 0 1px 0 rgba(255,255,255,0.2);
+
+                    transition:
+                        transform 0.2s ease,
+                        box-shadow 0.2s ease;
+                `;
+
+                // icon
+                const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+
+                icon.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+                icon.setAttribute('viewBox', '0 0 24 24');
+                icon.setAttribute('fill', 'none');
+                icon.setAttribute('stroke', 'currentColor');
+                icon.setAttribute('stroke-width', '2');
+                icon.setAttribute('stroke-linecap', 'round');
+                icon.setAttribute('stroke-linejoin', 'round');
+
+                icon.style.width = '18px';
+                icon.style.height = '18px';
+
+                const path1 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                path1.setAttribute('d', 'M12 3v12');
+
+                const path2 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                path2.setAttribute('d', 'M7 10l5 5 5-5');
+
+                const path3 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                path3.setAttribute('d', 'M5 21h14');
+
+                icon.appendChild(path1);
+                icon.appendChild(path2);
+                icon.appendChild(path3);
+
+                // text
+                const text = document.createElement('span');
+                text.textContent = 'Download';
+
+                // assemble
+                btn.appendChild(icon);
+                btn.appendChild(text);
+
+                // inject
+                container.appendChild(btn);
+
+                btn.dataset.bound = '1';
+                btn.addEventListener('click', function (e) {
+                    
+                    window.chrome.webview.postMessage({
+                        type: 'downloadBtnClick',
+                        x: e.clientX,
+                        y: e.clientY
+                    });
+
+                });
+
+            })();";
+
+            await webView21.CoreWebView2.ExecuteScriptAsync(script);
 
 
         }
@@ -536,5 +667,99 @@ namespace YoutubeDownloader
                 Console.WriteLine($"Error during extraction: {ex.Message}");
             }
         }
+
+        private void webView21_WebMessageReceived(object sender, Microsoft.Web.WebView2.Core.CoreWebView2WebMessageReceivedEventArgs e)
+        {
+
+            var msg = JsonDocument.Parse(e.WebMessageAsJson);
+
+            if (msg.RootElement.TryGetProperty("type", out var type) && type.GetString() == "downloadBtnClick")
+            {
+                int x = msg.RootElement.GetProperty("x").GetInt32();
+                int y = msg.RootElement.GetProperty("y").GetInt32();
+
+                ShowContextMenuAtWebPoint(x, y);
+            }
+        }
+
+        private void ShowContextMenuAtWebPoint(int x, int y)
+        {
+            // convert WebView client coords → screen coords
+            if (contextMenuStrip1 != null && contextMenuStrip1.Visible)
+            {
+                contextMenuStrip1.Close();
+            }
+
+            var screenPoint = webView21.PointToScreen(new Point(x, y));
+            contextMenuStrip1.Show(screenPoint);
+        }
+
+        public static async Task DownloadAndUpdateIfNewerAsync(string url, string folderPath)
+        {
+            try
+            {
+                Directory.CreateDirectory(folderPath);
+
+                string existingFile = Path.Combine(folderPath, "yt-dlp.exe");
+                string newFile = Path.Combine(folderPath, "yt-dlp-new.exe");
+
+                // 1. Download new file
+                using (HttpClient client = new HttpClient())
+                {
+                    byte[] data = await client.GetByteArrayAsync(url);
+                    await File.WriteAllBytesAsync(newFile, data);
+                }
+
+                // 2. Get version of new file
+                FileVersionInfo newVersionInfo = FileVersionInfo.GetVersionInfo(newFile);
+                Version newVersion = ParseVersion(newVersionInfo.FileVersion);
+
+                // 3. Get version of existing file
+                Version oldVersion = null;
+
+                if (File.Exists(existingFile))
+                {
+                    FileVersionInfo oldVersionInfo = FileVersionInfo.GetVersionInfo(existingFile);
+                    oldVersion = ParseVersion(oldVersionInfo.FileVersion);
+                }
+
+                // 4. Compare versions
+                bool shouldReplace =
+                    oldVersion == null || newVersion > oldVersion;
+
+                if (shouldReplace)
+                {
+                    File.Copy(newFile, existingFile, true);
+
+                    MessageBox.Show(
+                        $"Updated yt-dlp!\nNew version: {newVersion}",
+                        "Update complete",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Information
+                    );
+                }
+
+                // optional cleanup
+                File.Delete(newFile);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"Error: {ex.Message}",
+                    "Error",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error
+                );
+            }
+        }
+       
+        private static Version ParseVersion(string version)
+        {
+            if (Version.TryParse(version, out Version result))
+                return result;
+
+            return new Version(0, 0, 0, 0);
+        }
+
     }
 }

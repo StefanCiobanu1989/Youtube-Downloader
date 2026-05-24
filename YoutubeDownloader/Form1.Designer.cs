@@ -34,6 +34,8 @@
             contextMenuStrip1 = new ContextMenuStrip(components);
             downloadVideoToolStripMenuItem = new ToolStripMenuItem();
             downloadMP3ToolStripMenuItem = new ToolStripMenuItem();
+            cancelToolStripMenuItem = new ToolStripMenuItem();
+            toolStripSeparator1 = new ToolStripSeparator();
             ((System.ComponentModel.ISupportInitialize)webView21).BeginInit();
             contextMenuStrip1.SuspendLayout();
             SuspendLayout();
@@ -49,6 +51,7 @@
             webView21.Size = new Size(1675, 644);
             webView21.TabIndex = 0;
             webView21.ZoomFactor = 1D;
+            webView21.WebMessageReceived += webView21_WebMessageReceived;
             // 
             // button1
             // 
@@ -67,18 +70,17 @@
             button1.Text = "Download";
             button1.UseVisualStyleBackColor = false;
             button1.Visible = false;
-            button1.Click += button1_Click;
             // 
             // contextMenuStrip1
             // 
             contextMenuStrip1.BackColor = SystemColors.ControlDarkDark;
             contextMenuStrip1.Font = new Font("Segoe UI Semibold", 12F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            contextMenuStrip1.Items.AddRange(new ToolStripItem[] { downloadVideoToolStripMenuItem, downloadMP3ToolStripMenuItem });
+            contextMenuStrip1.Items.AddRange(new ToolStripItem[] { downloadVideoToolStripMenuItem, downloadMP3ToolStripMenuItem, toolStripSeparator1, cancelToolStripMenuItem });
             contextMenuStrip1.Name = "contextMenuStrip1";
             contextMenuStrip1.RenderMode = ToolStripRenderMode.Professional;
             contextMenuStrip1.ShowImageMargin = false;
             contextMenuStrip1.ShowItemToolTips = false;
-            contextMenuStrip1.Size = new Size(177, 96);
+            contextMenuStrip1.Size = new Size(177, 128);
             // 
             // downloadVideoToolStripMenuItem
             // 
@@ -100,6 +102,18 @@
             downloadMP3ToolStripMenuItem.Name = "downloadMP3ToolStripMenuItem";
             downloadMP3ToolStripMenuItem.Size = new Size(176, 26);
             downloadMP3ToolStripMenuItem.Text = "Download MP3";
+            // 
+            // cancelToolStripMenuItem
+            // 
+            cancelToolStripMenuItem.ForeColor = Color.White;
+            cancelToolStripMenuItem.Name = "cancelToolStripMenuItem";
+            cancelToolStripMenuItem.Size = new Size(176, 26);
+            cancelToolStripMenuItem.Text = "Cancel";
+            // 
+            // toolStripSeparator1
+            // 
+            toolStripSeparator1.Name = "toolStripSeparator1";
+            toolStripSeparator1.Size = new Size(173, 6);
             // 
             // Form1
             // 
@@ -127,5 +141,7 @@
         private ContextMenuStrip contextMenuStrip1;
         private ToolStripMenuItem downloadVideoToolStripMenuItem;
         private ToolStripMenuItem downloadMP3ToolStripMenuItem;
+        private ToolStripMenuItem cancelToolStripMenuItem;
+        private ToolStripSeparator toolStripSeparator1;
     }
 }
