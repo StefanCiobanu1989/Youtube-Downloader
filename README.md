@@ -7,7 +7,7 @@ How to Run:
 5.) When running the app again it should take you to youtube's page.<br>
 6.) Before being able to download anything you must first open Firefox and authenticate on youtube in Firefox. This is required because firefox youtube cookies are being used by the app and to bypass any bot protection.<br>
 7.) After you have authenticated in Firefox close Firefox and start YoutubeDownloader.exe<br>
-8.) While inside YoutubeDownloader navigate to a video of your choosing and wait for to "Download" button to show up on the right top corner of the video player. 
+8.) While inside YoutubeDownloader navigate to a video of your choosing and wait for the "Download" button to show up on the right top corner of the video player. 
 <br>
 9.) Click on the download button and chose the video source you want to download or download it as audio (mp3).<br><br>
 
